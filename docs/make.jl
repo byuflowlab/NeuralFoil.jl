@@ -7,17 +7,14 @@ makedocs(;
     modules=[NeuralFoil],
     authors="Judd Mehr",
     sitename="NeuralFoil.jl",
-    format=Documenter.HTML(;
-        canonical="https://byuflowlab.github.io/NeuralFoil.jl",
-        edit_link="main",
-        assets=String[],
-    ),
+    format=Documenter.HTML(),
     pages=[
-        "Home" => "index.md",
+        "Intro" => "index.md",
+        "Quick Start" => "tutorial.md",
+        "API Reference" => "reference.md",
     ],
+    warnonly=Documenter.except(:linkcheck, :footnote),
+    repo="https://github.com/byuflowlab/NeuralFoil.jl/blob/{commit}{path}#L{line}",
 )
 
-deploydocs(;
-    repo="github.com/byuflowlab/NeuralFoil.jl",
-    devbranch="main",
-)
+deploydocs(; repo="github.com/byuflowlab/NeuralFoil.jl", devbranch="main")

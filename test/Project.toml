@@ -1,0 +1,6 @@
+[deps]
+CondaPkg = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
+FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
