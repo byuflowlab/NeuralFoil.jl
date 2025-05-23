@@ -1,19 +1,4 @@
 """
-    split_cosine_spacing(N::Integer=160)
-
-Returns cosine spaced x coordinates from 0 to 1.
-
-# Arguments
-- `N::Integer` : Number of points.
-
-# Returns
-- `x::AbstractArray{Float}` : cosine spaced x-coordinates, starting at 0.0 ending at 1.0.
-"""
-function split_cosine_spacing(N::Integer=80)
-    return [0.5 * (1 - cos(pi * (i - 1) / (N - 1))) for i in 1:N]
-end
-
-"""
     naca4_thickness(x, maxthick; blunt_te=false)
 
 Compute thickness at a given chord-normalized x-position by NACA 4-series thickness equations.

@@ -1,3 +1,7 @@
+#---------------------------------#
+#        Wrap Python Version      #
+#---------------------------------#
+
 using PythonCall
 using CondaPkg
 CondaPkg.add_pip("neuralfoil")
@@ -28,9 +32,13 @@ function wrapped_nf(coordinates, alpha, reynolds; model_size="xlarge")
         cl=pyconvert(Vector{Float64}, aero["CL"]),
         cd=pyconvert(Vector{Float64}, aero["CD"]),
         cm=pyconvert(Vector{Float64}, aero["CM"]),
-        confidence=pyconvert(Vector{Float64}, aero["analysis_confidence"]),
+        analysis_confidence=pyconvert(Vector{Float64}, aero["analysis_confidence"]),
     )
 end
+
+#---------------------------------#
+#            Run Tests            #
+#---------------------------------#
 
 @testset "Compare Kulfan Solvers" begin
     coordinates = NeuralFoil.get_coordinates_from_file("data/naca_2412_blunt.dat")
@@ -66,8 +74,11 @@ end
     @test isapprox(outputs_nfpy.cl, outputs_nfjl.cl, atol=1e-8)
     @test isapprox(outputs_nfpy.cd, outputs_nfjl.cd, atol=1e-8)
     @test isapprox(outputs_nfpy.cm, outputs_nfjl.cm, atol=1e-8)
+    @test isapprox(
+        outputs_nfpy.analysis_confidence, outputs_nfjl.analysis_confidence, atol=1e-8
+    )
 
-    # multiple reynolds test
+    # multiple reynolds test (check for desired shapes)
     reynolds = [1e6; 2e6]
 
     outputs_nfjl = get_aero_from_coordinates(

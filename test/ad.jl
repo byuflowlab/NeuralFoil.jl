@@ -3,14 +3,14 @@ using FiniteDiff
 
 @testset "Check NeuralFoil Derivatives" begin
     function wrapfun(var)
-        x, y = naca4(var[1], var[2], var[3])
+        x, y = NeuralFoil.naca4(var[1], var[2], var[3])
         coordinates = [x y]
 
         outputs = get_aero_from_coordinates(
-            coordinates, range(-5, 5, 3); reynolds=1e6, model_size="xlarge"
+            coordinates, range(-5, 5, 3), 1e6; model_size="xlarge"
         )
 
-        return [outputs.cl; outputs.cd; outputs.cm; outputs.confidence]
+        return [outputs.cl; outputs.cd; outputs.cm; outputs.analysis_confidence]
     end
 
     nacaparam = [2.0, 4.0, 12.0]

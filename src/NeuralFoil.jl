@@ -10,7 +10,7 @@ include("net.jl")
 include("analyze.jl")
 include("naca.jl")
 
-export NetParameters, KulfanParameters
+export NetParameters, KulfanParameters, NeuralOutputs
 export get_aero_from_dat_file, get_aero_from_coordinates, get_aero_from_kulfan_parameters
 
 end
