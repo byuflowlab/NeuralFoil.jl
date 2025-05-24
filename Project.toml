@@ -8,6 +8,7 @@ LsqFit = "2fda8390-95c7-5789-9bda-21331edee243"
 NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
 
 [compat]
+NPZ = "0.4"
 LsqFit = "0.15"
 julia = "1.10"
 
