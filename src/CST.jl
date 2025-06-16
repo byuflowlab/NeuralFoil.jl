@@ -166,19 +166,25 @@ function get_kulfan_parameters(coordinates; n_coefficients=8, N1=0.5, N2=1.0)
             NeuralFoil.cst_te0,
             [xu; reverse(xl)],
             [yu; reverse(yl)],
-            [0.1 * ones(n_coefficients); -0.1 * ones(n_coefficients); 0.1; te_z];
+            [0.1 * ones(n_coefficients); -0.1 * ones(n_coefficients); 0.1];
             autodiff=:forwarddiff,
         )
-        cst_TE = 0.0
-    else
-        cst_TE = fit.param[end]
-    end
 
-    # Organize Outputs
-    nc = Int((length(fit.param) - 2) / 2)
-    cst_upper = fit.param[1:nc]
-    cst_lower = fit.param[(nc + 1):(end - 2)]
-    cst_LE = fit.param[end - 1]
+        # Organize Outputs
+        cst_TE = 0.0
+        nc = Int((length(fit.param) - 1) / 2)
+        cst_upper = fit.param[1:nc]
+        cst_lower = fit.param[(nc + 1):(end - 1)]
+        cst_LE = fit.param[end - 1]
+
+    else
+        # Organize Outputs
+        cst_TE = fit.param[end]
+        nc = Int((length(fit.param) - 2) / 2)
+        cst_upper = fit.param[1:nc]
+        cst_lower = fit.param[(nc + 1):(end - 2)]
+        cst_LE = fit.param[end - 1]
+    end
 
     # Return
     return KulfanParameters(cst_upper, cst_lower, [cst_LE], [cst_TE])
