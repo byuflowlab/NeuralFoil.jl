@@ -109,34 +109,24 @@ function normalize_coordinates!(coordinates)
 end
 
 """
-    split_upper_lower(x, y; idx::Integer=nothing)
+    split_upper_lower(coordinates)
 
 Split the upper and lower halves of the airfoil coordinates.
 
-Assumes leading edge point is at first minimum x value if `idx` is not provided.
-Returns the upper and lower coordinates each with the leading edge point.
-Assumes airfoil is defined clockwise starting at the trailing edge.
+Assumes leading edge point is at first minimum x value. Returns the upper and
+lower coordinates each with the leading edge point. Assumes airfoil is defined
+clockwise starting at the trailing edge.
 
 # Arguments:
- - `x::AbstractArray{Float}` : Vector of x coordinates
- - `y::AbstractArray{Float}` : Vector of y coordinates
-
-# Keyword Arguments:
- - `idx::Integer` : optional index at which to split the coordinates
+ - `coordinates::AbstractMatrix{Float}` : Matrix of coordinates
 
 # Returns:
- - `xl::AbstractArray{Float}` : Vector of lower half of x coordinates
- - `xu::AbstractArray{Float}` : Vector of upper half of x coordinates
- - `yl::AbstractArray{Float}` : Vector of lower half of y coordinates
- - `yu::AbstractArray{Float}` : Vector of upper half of y coordinates
-
+ - `upper_coordinates::AbstractMatrix{Float}` : Vector of upper half coordinates
+ - `lower_coordinates::AbstractMatrix{Float}` : Vector of lower half coordinates
 """
-function split_upper_lower(x, y; idx=nothing)
+function split_upper_lower(coordinates)
+    _, n = findmin(@view coordinates[:, 1])
+    offset = isodd(size(coordinates, 1)) ? 0 : 1
 
-    # get half length of geometry coordinates
-    if isnothing(idx)
-        _, idx = findmin(x)
-    end
-
-    return x[1:idx], x[idx:end], y[1:idx], y[idx:end]
+    return coordinates[1:n, :], coordinates[(n + offset):end, :]
 end
