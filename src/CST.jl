@@ -43,19 +43,20 @@ function half_cst(coefficients, x, dz, leading_edge_weight; N1=0.5, N2=1.0)
     y = @. C * S + x * dz
 
     # Kulfan leading edge modification
-    y .+= leading_edge_weight .* x .* (1.0 .- x) .^ (length(coefficients) + 0.5)
+    y .+= leading_edge_weight .* x .* max.(1.0 .- x, 0) .^ (length(coefficients) + 0.5)
 
     return y
 end
 
 """
-    cst(x, p; N1=0.5, N2=1.0)
+    cst(x, p, x_split_id; N1=0.5, N2=1.0)
 
 Determine y-coordinates of one side of an airfoil give coeffiecients and x coordinates.
 
 # Arguments
 - `x::Vector{Float}` : x-coordinates (concatenated top and bottom)
 - `p::Vector{Float}` : parameters including Kulfan parameters, leading edge weight, and trailing edge gap.
+- `x_split_id::Int`  : id for splitting the upper and lower coordinates
 
 # Keyword Arguments
 - `N1::Float=0.5` : Class function parameter for leading edge
@@ -64,35 +65,35 @@ Determine y-coordinates of one side of an airfoil give coeffiecients and x coord
 # Returns
 - `y::Vector{Float}` : y-coordinates associated with the x-coordinates
 """
-function cst(x, p; N1=0.5, N2=1.0)
-    # Extract Parameters
-    np = Int((length(p) - 2) / 2)
-    pu = p[1:np]
-    pl = p[(np + 1):(np * 2)]
-    leading_edge_weight = p[end - 1]
-    dz = p[end]
+function cst(x, p, x_split_id; N1=0.5, N2=1.0)
+    weights..., leading_edge_weight, dz = p
 
-    # Split halves
-    nx = Int(length(x) / 2)
-    xu = x[1:nx]
-    xl = x[(nx + 1):end]
+    N = convert(Int, length(weights) / 2)
+    weights_upper = weights[1:N]
+    weights_lower = weights[(N + 1):end]
 
-    # Get y-values
-    yu = half_cst(pu, xu, dz / 2.0, leading_edge_weight)
-    yl = half_cst(pl, xl, -dz / 2.0, leading_edge_weight)
+    x_upper = x[1:x_split_id]
+    x_lower = x[(x_split_id + 1):end]
 
-    # Return
-    return [yu; yl]
+    y_upper = half_cst(
+        weights_upper, reverse(x_upper), dz / 2, leading_edge_weight; N1, N2
+    )
+    y_lower = half_cst(
+        weights_lower, x_lower, -dz / 2, leading_edge_weight; N1, N2
+    )
+
+    return [reverse(y_upper); y_lower]
 end
 
 """
-    cst_te0(x, p; N1=0.5, N2=1.0)
+    cst_te0(x, p, x_split_id; N1=0.5, N2=1.0)
 
 Determine y-coordinates of one side of an airfoil give coeffiecients and x coordinates. Require a zero gap trailing edge
 
 # Arguments
 - `x::Vector{Float}` : x-coordinates (concatenated top and bottom)
 - `p::Vector{Float}` : parameters including Kulfan parameters, leading edge weight, and trailing edge gap.
+- `x_split_id::Int`  : id for splitting the upper and lower coordinates
 
 # Keyword Arguments
 - `N1::Float=0.5` : Class function parameter for leading edge
@@ -101,24 +102,8 @@ Determine y-coordinates of one side of an airfoil give coeffiecients and x coord
 # Returns
 - `y::Vector{Float}` : y-coordinates associated with the x-coordinates
 """
-function cst_te0(x, p; N1=0.5, N2=1.0)
-    # Extract Parameters
-    np = Int((length(p) - 1) / 2)
-    pu = p[1:np]
-    pl = p[(np + 1):(np * 2)]
-    leading_edge_weight = p[end]
-
-    # Split halves
-    nx = Int(length(x) / 2)
-    xu = x[1:nx]
-    xl = x[(nx + 1):end]
-
-    # Get y-values
-    yu = half_cst(pu, xu, 0.0, leading_edge_weight)
-    yl = half_cst(pl, xl, 0.0, leading_edge_weight)
-
-    # Return
-    return [yu; yl]
+function cst_te0(x, p, x_split_id; N1=0.5, N2=1.0)
+    return cst(x, [p; 0], x_split_id; N1, N2)
 end
 
 """
@@ -138,24 +123,23 @@ Use least squares to approximate kulfan parameters generating the input coordina
 - `kulfan_parameters::KulfanParameters` : a KulfanParameters object containing the Kulfan parameters.
 """
 function get_kulfan_parameters(coordinates; n_coefficients=8, N1=0.5, N2=1.0)
-
-    # Normalize
-    normalize_coordinates!(coordinates)
-
     # Split
-    xu, xl, yu, yl = NeuralFoil.split_upper_lower(
-        coordinates[:, 1], coordinates[:, 2]; idx=Int((size(coordinates, 1) + 1) / 2)
-    )
+    coords_upper, coords_lower = split_upper_lower(coordinates)
+
+    xu = @view coords_upper[:, 1]
+    yu = @view coords_upper[:, 2]
+    xl = @view coords_lower[:, 1]
+    yl = @view coords_lower[:, 2]
 
     # Get trailing edge gap
-    te_z = yu[end] - yl[end]
+    te_z = yu[1] - yl[end]
 
     # Fit coordintes
     fit = LsqFit.curve_fit(
-        NeuralFoil.cst,
-        [xu; reverse(xl)],
-        [yu; reverse(yl)],
-        [0.1 * ones(n_coefficients); -0.1 * ones(n_coefficients); 0.1; te_z];
+        (x, p) -> cst(x, p, length(xu); N1, N2),
+        [xu; xl],
+        [yu; yl],
+        [ones(2 * n_coefficients + 1); te_z];
         autodiff=:forwarddiff,
     )
 
@@ -163,27 +147,24 @@ function get_kulfan_parameters(coordinates; n_coefficients=8, N1=0.5, N2=1.0)
     if fit.param[end] < 0.0
         # Fit coordintes
         fit = LsqFit.curve_fit(
-            NeuralFoil.cst_te0,
-            [xu; reverse(xl)],
-            [yu; reverse(yl)],
-            [0.1 * ones(n_coefficients); -0.1 * ones(n_coefficients); 0.1];
+            (x, p) -> cst_te0(x, p, length(xu); N1, N2),
+            [xu; xl],
+            [yu; yl],
+            ones(2 * n_coefficients + 1);
             autodiff=:forwarddiff,
         )
 
         # Organize Outputs
+        cst_upper = fit.param[1:n_coefficients]
+        cst_lower = fit.param[(n_coefficients + 1):(2 * n_coefficients)]
+        cst_LE = fit.param[end]
         cst_TE = 0.0
-        nc = Int((length(fit.param) - 1) / 2)
-        cst_upper = fit.param[1:nc]
-        cst_lower = fit.param[(nc + 1):(end - 1)]
-        cst_LE = fit.param[end - 1]
-
     else
         # Organize Outputs
-        cst_TE = fit.param[end]
-        nc = Int((length(fit.param) - 2) / 2)
-        cst_upper = fit.param[1:nc]
-        cst_lower = fit.param[(nc + 1):(end - 2)]
+        cst_upper = fit.param[1:n_coefficients]
+        cst_lower = fit.param[(n_coefficients + 1):(2 * n_coefficients)]
         cst_LE = fit.param[end - 1]
+        cst_TE = fit.param[end]
     end
 
     # Return
